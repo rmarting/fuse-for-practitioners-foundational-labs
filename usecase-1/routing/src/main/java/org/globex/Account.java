@@ -19,4 +19,14 @@ public class Account {
     public void setContact(Contact contact) {
         this.contact = contact;
     }
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Account [company=").append(company)
+				.append(", contact=").append(contact).append("]");
+		return builder.toString();
+	}
+    
+    
 }

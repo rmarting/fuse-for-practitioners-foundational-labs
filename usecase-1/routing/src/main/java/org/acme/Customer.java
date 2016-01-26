@@ -106,4 +106,18 @@ public class Customer {
     public void setPhone(String phone) {
         this.phone = phone;
     }
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Customer [companyName=").append(companyName).append(", region=").append(region)
+				.append(", active=").append(active).append(", firstName=").append(firstName).append(", lastName=")
+				.append(lastName).append(", streetAddr=").append(streetAddr).append(", city=").append(city)
+				.append(", state=").append(state).append(", zip=").append(zip).append(", phone=").append(phone)
+				.append("]");
+		return builder.toString();
+	}
+    
+    
+    
 }
