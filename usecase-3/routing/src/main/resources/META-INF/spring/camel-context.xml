@@ -109,7 +109,7 @@
 		<!-- Use Case 3 -->
 		<route id="manageAccountFromQueue">
 		    <from uri="amq-notx:queue:{{queueInput}}"/>
-		    <log message="Moving message from {{queueInput}} to {{queueOutput}}. Message:\n${body}"/>
+		    <log message="Moving message from input queue {{queueInput}} to output queue {{queueOutput}}.\nMessage:\n${body}"/>
 			<to uri="amq-notx:queue:{{queueOutput}}"/>
 		</route>
 		
@@ -123,11 +123,11 @@
 		<!-- SQL Routes -->
 		<route id="insertErrorDB">
 			<from uri="direct:insertErrorDB" />
-			<log message="Inserting error data into H2-DB"/>
+			<log message="Inserting error data into DB"/>
 			<transform>
 				<method ref="processorBean" method="defineNamedParameters" />
 			</transform>
-			<log message="Data to insert into DB.\n${body}"/>
+			<log message="Error Data to insert into DB.\n${body}"/>
 			<to uri="sql:{{sql.insertNewError}}"/>
 		</route>
     </camelContext>

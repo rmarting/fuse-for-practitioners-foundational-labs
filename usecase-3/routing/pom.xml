@@ -30,14 +30,14 @@
             *
         </osgi-import-package>
         <osgi-export-package>
-            org.acme,org.globex
+            org.acme,org.globex,org.fuse.usecase
         </osgi-export-package>
         <osgi-dynamic-package>*</osgi-dynamic-package>
         <osgi-require-bundle>org.apache.activemq.activemq-osgi</osgi-require-bundle>
 
         <fabric8.profile>fuse-usecase3</fabric8.profile>
         <fabric8.parentProfiles>feature-camel</fabric8.parentProfiles>
-        <fabric8.features>camel-spring camel-dozer camel-jackson camel-bindy</fabric8.features>
+        <fabric8.features>camel-spring camel-dozer camel-jackson camel-bindy camel-amq camel-sql</fabric8.features>
         <fabric8.bundle>mvn:org.fuse.usecase3/routing/1.0</fabric8.bundle>
         <fabric8.profileConfigDir>src/main/resources/fabric8</fabric8.profileConfigDir>
     </properties>
@@ -84,18 +84,22 @@
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-broker</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-spring</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-jaas</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
             <artifactId>activemq-kahadb-store</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.xbean</groupId>
@@ -141,7 +145,6 @@
     </dependencies>
 
     <build>
-
         <plugins>
             <!-- Camel plugin -->
             <plugin>
