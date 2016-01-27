@@ -17,25 +17,118 @@
 
     <!-- SQL Component -->
     <bean id="sql" class="org.apache.camel.component.sql.SqlComponent">
+        <property name="dataSource" ref="usecaseDB"/>
     </bean>
 
-    <!-- Spring JMS TxManager -->
-    <bean id="jmsTransactionManager" class="org.springframework.jms.connection.JmsTransactionManager">
-    </bean>
-
+    <!-- Configure ActiveMQ Broker -->
+    
     <!-- JMS ConnectionFactory  -->
     <bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+        <property name="brokerURL" value="tcp://localhost:61616"/>
+        <property name="userName" value="admin"/>
+        <property name="password" value="admin"/>
     </bean>
 
+    <!-- JMS Configuration -->
+	<bean id="jmsConfiguration" class="org.apache.activemq.camel.component.ActiveMQConfiguration">
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+		<property name="usePooledConnection" value="false" />
+	</bean>    
+    
     <!-- ActiveMQ Camel Component - Tx -->
+    <!-- Spring JMS TxManager -->
+    <bean id="jmsTransactionManager" class="org.springframework.jms.connection.JmsTransactionManager">
+        <property name="connectionFactory" ref="jmsConnectionFactory" />
+    </bean>
+
     <bean id="amq-tx" class="org.apache.activemq.camel.component.ActiveMQComponent">
+    	<property name="transacted" value="true"/>
+    	<property name="transactionManager" ref="jmsTransactionManager"/>        
     </bean>
 
     <!-- ActiveMQ Camel Component - No Tx -->
     <bean id="amq-notx" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="configuration" ref="jmsConfiguration" />
+    	<property name="transacted" value="false"/>        
     </bean>
-
+    
+    <!-- Processor Bean -->
+    <bean id="processorBean" class="org.fuse.usecase.ProcessorBean"/>
+    
+	<!-- Camel Context -->
     <camelContext trace="false" xmlns="http://camel.apache.org/schema/spring">
         <propertyPlaceholder id="properties" location="fabric8/route.properties"/>
+
+        <!-- Use Case 1 -->
+		<endpoint
+			uri="dozer:csv2json?sourceModel=org.acme.Customer&amp;targetModel=org.globex.Account&amp;marshalId=transform-json&amp;mappingFile=transformation.xml"
+			id="csv2json" />
+
+		<dataFormats>
+			<bindy type="Csv" classType="org.acme.Customer" id="bindyDataformat" />
+			<json library="Jackson" id="transform-json" />
+		</dataFormats>
+		
+		<!-- Interceptor Strategy -->
+		<interceptSendToEndpoint uri="direct:error" skipSendToOriginalEndpoint="true">
+		    <!-- Setting More Exception Information -->
+			<setHeader headerName="error-code">
+				<constant>111</constant>     
+			</setHeader>
+			<setHeader headerName="error-message">
+			    <simple>${exception.message}</simple> 
+			</setHeader>
+			<to uri="direct:insertErrorDB"/>
+    	</interceptSendToEndpoint> 
+       
+		<!-- Use Case 1 -->
+		<route id="loadCSV">
+			<from uri="file:{{fileInput}}?fileName=customers.csv&amp;noop=true" />
+
+			<onException>
+				<exception>java.lang.IllegalArgumentException</exception>
+				<handled>
+					<constant>true</constant>
+				</handled>
+				<to uri="direct:error" />
+			</onException>
+
+			<log message="Loaded file ${header.CamelFileName}" />
+			<split streaming="true">
+				<tokenize token="\n"></tokenize>
+				<log message="Managing Record Row:\n${body}" />
+				<unmarshal ref="bindyDataformat" />
+				<log message="Customer Data:\n${body}" />
+				<to ref="csv2json" />
+				<log message="Account Data:\n${body}" />
+				<log message="Sending to A-MQ Queue {{queueInput}}"/>
+				<to uri="amq-notx:queue:{{queueInput}}" />
+			</split>
+		</route>
+		
+		<!-- Use Case 3 -->
+		<route id="manageAccountFromQueue">
+		    <from uri="amq-notx:queue:{{queueInput}}"/>
+		    <log message="Moving message from {{queueInput}} to {{queueOutput}}. Message:\n${body}"/>
+			<to uri="amq-notx:queue:{{queueOutput}}"/>
+		</route>
+		
+		<!-- Save errors in Topic -->
+		<route id="">
+		    <from uri="direct:error"/>
+		    <log message="Sending data to Error Topic\n${body}"/>
+			<to uri="amq-notx:topic:{{topicNotification}}" />
+		</route>
+		
+		<!-- SQL Routes -->
+		<route id="insertErrorDB">
+			<from uri="direct:insertErrorDB" />
+			<log message="Inserting error data into H2-DB"/>
+			<transform>
+				<method ref="processorBean" method="defineNamedParameters" />
+			</transform>
+			<log message="Data to insert into DB.\n${body}"/>
+			<to uri="sql:{{sql.insertNewError}}"/>
+		</route>
     </camelContext>
 </beans>

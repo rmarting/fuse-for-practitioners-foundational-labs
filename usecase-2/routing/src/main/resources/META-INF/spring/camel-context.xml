@@ -55,7 +55,7 @@
 		    </cxf:providers>
     </cxf:rsClient>
         
-    <!-- SQL Beans -->
+    <!-- Processor Bean -->
     <bean id="processorBean" class="org.fuse.usecase.ProcessorBean"/>
     
     <!-- Camel Context -->

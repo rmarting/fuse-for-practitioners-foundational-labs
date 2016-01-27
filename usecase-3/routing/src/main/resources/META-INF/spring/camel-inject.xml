@@ -6,11 +6,38 @@
        http://www.springframework.org/schema/beans/spring-beans.xsd
        http://camel.apache.org/schema/spring
        http://camel.apache.org/schema/spring/camel-spring.xsd">
-
+    
     <camelContext trace="false" xmlns="http://camel.apache.org/schema/spring">
         <propertyPlaceholder id="properties" location="fabric8/route.properties"/>
+        
         <route id="file-queue">
+            <from uri="sql:SELECT ID, ERROR_CODE, ERROR_MESSAGE, MESSAGE, STATUS FROM USECASE.T_ERROR WHERE STATUS = 'FIXED'?consumer.delay=1000"/>
+            <log message="Data fixed.\n${body['ID']} ${body['MESSAGE']}"/>
+            <multicast>
+                <to uri="direct:updateDB"/>
+                <to uri="direct:sendMessage"/>
+            </multicast>
         </route>
+        
+        <route id="updateDB">
+            <from uri="direct:updateDB"/>
+            <log message="Updating DB to close issue"/>
+            <transform>
+                <simple>${body['ID']}</simple>
+            </transform>
+            <log message="ID to update:\n${body}"/>
+            <to uri="sql:UPDATE USECASE.T_ERROR SET STATUS = 'CLOSE' WHERE ID = :#${body}"/>
+        </route>
+        
+        <route id="sendMessageToQueue">
+			<from uri="direct:sendMessage"/>            
+            <transform>
+                <simple>${body['MESSAGE']}</simple>
+            </transform>
+            <log message="Message to queue.\n${body}"/>
+            <to uri="amq-notx:queue:{{queueInput}}" />
+		</route>
+        
     </camelContext>
 
 </beans>
