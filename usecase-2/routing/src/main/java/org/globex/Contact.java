@@ -66,4 +66,13 @@ public class Contact {
         this.phone = phone;
     }
 
+	@Override
+	public String toString() {
+		return "Contact [firstName=" + firstName + ", lastName=" + lastName
+				+ ", streetAddr=" + streetAddr + ", city=" + city + ", state="
+				+ state + ", zip=" + zip + ", phone=" + phone + "]";
+	}
+    
+    
+
 }

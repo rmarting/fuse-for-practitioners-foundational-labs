@@ -44,4 +44,12 @@ public class CorporateAccount {
         this.salesContact = salesContact;
     }
 
+	@Override
+	public String toString() {
+		return "CorporateAccount [company=" + company + ", contact=" + contact
+				+ ", id=" + id + ", salesContact=" + salesContact + "]";
+	}
+    
+    
+
 }

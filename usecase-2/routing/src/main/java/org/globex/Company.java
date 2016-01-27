@@ -29,4 +29,12 @@ public class Company {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+	@Override
+	public String toString() {
+		return "Company [name=" + name + ", geo=" + geo + ", active=" + active
+				+ "]";
+	}
+    
+    
 }

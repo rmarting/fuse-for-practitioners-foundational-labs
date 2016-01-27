@@ -38,4 +38,13 @@ public class Account {
     public void setSalesRepresentative(String salesRepresentative) {
         this.salesRepresentative = salesRepresentative;
     }
+
+	@Override
+	public String toString() {
+		return "Account [company=" + company + ", contact=" + contact
+				+ ", clientId=" + clientId + ", salesRepresentative="
+				+ salesRepresentative + "]";
+	}
+    
+    
 }

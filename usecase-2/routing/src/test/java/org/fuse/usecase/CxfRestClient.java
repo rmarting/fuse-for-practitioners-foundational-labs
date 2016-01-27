@@ -1,21 +1,27 @@
 package org.fuse.usecase;
 
-import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-//import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
+
 import org.globex.Account;
 import org.globex.Company;
 import org.globex.Contact;
+import org.junit.Test;
 
-import javax.ws.rs.client.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import static org.junit.Assert.assertEquals;
+import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 
 public class CxfRestClient {
 
-    public static void main(String[] args) {
-
+	@Test
+	public void callRS() throws IOException {
         Account account = new Account();
 
         Company company = new Company();
@@ -36,10 +42,13 @@ public class CxfRestClient {
         account.setContact(contact);
 
         Client client = ClientBuilder.newClient().register(JacksonJsonProvider.class);
-        WebTarget target = client.target("http://localhost:9191/rest/customerservice/enrich");
+        WebTarget target = client.target("http://localhost:9191/rs/customerservice/enrich");
 
         Account a = target.request(MediaType.APPLICATION_JSON).post(Entity.json(account), Account.class);
-        assertEquals("NORTH_AMERICA",a.getCompany().getGeo());
+        
+        assertNotNull("There is a response", a);
+        assertEquals("It is from NA", "NORTH_AMERICA", a.getCompany().getGeo());
     }
+    
 
 }

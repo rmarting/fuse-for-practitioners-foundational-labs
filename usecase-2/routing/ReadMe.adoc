@@ -1,0 +1,7 @@
+
+
+	Service Endpoints
+		WS: http://localhost:9090/ws/customerService/?wsdl
+		RS: (POST) http://localhost:9191/rs/customerservice/enrich
+		
+	

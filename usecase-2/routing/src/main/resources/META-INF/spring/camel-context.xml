@@ -20,19 +20,183 @@
 
     <!-- SQL Component -->
     <bean id="sql" class="org.apache.camel.component.sql.SqlComponent">
-
+		 <property name="dataSource" ref="usecaseDB"/>
     </bean>
+    
+    <!-- Agregator Strategies -->
+    <bean id="accountAggregator" class="org.fuse.usecase.AccountAggregator"/>
 
-    <cxf:cxfEndpoint id="customerWebService">
+    <!-- JSON Providers -->
+    <bean id="jsonProvider" class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/>
+    
+    <!-- CXF Endpoints -->
+    <cxf:cxfEndpoint id="customerWebService" address="http://localhost:9090/ws/customerService/" serviceClass="org.fuse.usecase.service.CustomerWS" loggingFeatureEnabled="true">
     </cxf:cxfEndpoint>
 
-    <cxf:rsServer id="customerRestService">
+    <cxf:rsServer id="customerRestService" address="http://localhost:9191/rs" serviceClass="org.fuse.usecase.service.CustomerRest">
+	    <cxf:providers>
+	       	<ref bean="jsonProvider"/>
+	    </cxf:providers>
     </cxf:rsServer>
-
-    <cxf:rsClient id="customerRestServiceClient">
+    
+    <!-- CXF Beans -->
+    <bean id="customerWSImpl" class="org.fuse.usecase.service.CustomerWSImpl"/>
+    <bean id="customerRSImpl" class="org.fuse.usecase.service.CustomerRestImpl"/>
+    
+    <!-- CXF Clients -->
+    <cxf:rsClient id="customerRestServiceClient" address="http://localhost:9191/rs" serviceClass="org.fuse.usecase.service.CustomerRest"
+        loggingFeatureEnabled="true" skipFaultLogging="true">
+    		<cxf:headers>    		  
+            	<entry key="Accept" value="application/json" />
+            	<entry key="Content-Type" value="application/json" />
+        	</cxf:headers>
+		    <cxf:providers>
+		       	<ref bean="jsonProvider"/>
+		    </cxf:providers>
     </cxf:rsClient>
-
+        
+    <!-- SQL Beans -->
+    <bean id="processorBean" class="org.fuse.usecase.ProcessorBean"/>
+    
+    <!-- Camel Context -->
     <camelContext trace="false" xmlns="http://camel.apache.org/schema/spring">
         <propertyPlaceholder id="properties" location="fabric8/route.properties"/>
-    </camelContext>
+        
+        <!-- Use Case 1 -->
+		<endpoint
+			uri="dozer:csv2json?sourceModel=org.acme.Customer&amp;targetModel=org.globex.Account&amp;marshalId=transform-json&amp;mappingFile=transformation.xml"
+			id="csv2json" />
+		
+		<dataFormats>
+			<bindy type="Csv" classType="org.acme.Customer" id="bindyDataformat" />
+			
+			<json id="transform-json" library="Jackson" />
+			<json id="json2Account" library="Jackson" unmarshalTypeName="org.globex.Account"/>
+		</dataFormats>
+
+		<route id="loadCSV" autoStartup="true">
+			<from uri="file:{{fileInput}}?fileName=customers.csv&amp;noop=true" />
+
+			<onException>
+				<exception>java.lang.IllegalArgumentException</exception>
+				<handled>
+					<constant>true</constant>
+				</handled>
+				<to uri="file:{{fileError}}?fileName=account-${property.CamelSplitIndex}.json" />
+			</onException>
+
+			<log message="Loaded file ${header.CamelFileName}" />
+			
+			<split streaming="true">
+				<tokenize token="\n"></tokenize>
+				<log message="Record Row: ${body}" />
+				<unmarshal ref="bindyDataformat" />
+				<log message="Customer: ${body}" />
+				<to ref="csv2json" />
+				<log message="Account: ${body}" />
+				<to uri="file:{{fileOutput}}?fileName=account-${property.CamelSplitIndex}.json" />
+			</split>
+		</route>
+		<!-- Ends Use Case 1 -->
+		
+		<!-- Use Case 2 -->
+		<route id="loadAccount" autoStartup="true">
+			<from uri="file:{{fileOutput}}?noop=false" />
+			<log message="Loading Account file ${header.CamelFileName}"/>
+			<unmarshal ref="json2Account"/>
+			<multicast strategyRef="accountAggregator" parallelProcessing="false">
+			    <to uri="direct:rs"/>
+			    <to uri="direct:ws"/>
+			</multicast>
+			<log message="Aggregated data from External Services:\n${body}"/>
+			<to uri="direct:insertDB" />
+		</route>
+		
+		<!-- Routes to Call Services -->	
+		<route id="callRS">
+		    <from uri="direct:rs"/>
+		    
+		    <onException>
+				<exception>java.lang.Exception</exception>
+				<redeliveryPolicy maximumRedeliveries="1" redeliveryDelay="0"/>
+				<handled>
+					<constant>true</constant>
+				</handled>
+				<log message="Error in callRS service.\nMessage: ${exception.message}\nStack Trace:\n${exception.stacktrace}" />
+			</onException>		 
+		    
+		    <log message="Invoking REST Service (Account):\n${body}" />
+		    <bean ref="processorBean" method="convertAccountToString" />
+		    
+		    <!-- Preparing Http Headers -->
+		    <setHeader headerName="CamelCxfRsUsingHttpAPI">
+         		<constant>true</constant>        
+       		</setHeader>
+		    <setHeader headerName="CamelHttpMethod">
+         		<constant>POST</constant>        
+       		</setHeader>
+		    <setHeader headerName="Content-Type">
+         		<constant>application/json</constant>
+       		</setHeader>
+		    <setHeader headerName="CamelHttpPath">
+         		<constant>/customerservice/enrich</constant>        
+       		</setHeader>
+		    <setHeader headerName="originalBody">
+         		<constant>${body}</constant>        
+       		</setHeader>
+		    
+		    <!-- Calling RS Service -->
+       		<log message="Invoking RS Service"/>
+   		    <inOut uri="cxfrs:bean:customerRestServiceClient"/>
+   		    
+   		    <!-- Procesing Response -->
+   		    <bean ref="processorBean" method="manageRESTResponse" />
+   		    <log message="Response from customerRestServiceClient:\n${body}"/>
+   		</route>
+
+		<route id="callWS">
+		    <from uri="direct:ws"/>
+		    
+		    <onException>
+				<exception>java.lang.Exception</exception>
+				<redeliveryPolicy maximumRedeliveries="1" redeliveryDelay="0"/>
+				<handled>
+					<constant>true</constant>
+				</handled>
+				<log message="Error in callWS service.\nMessage: ${exception.message}\nStack Trace:\n${exception.stacktrace}" />
+			</onException>		    
+		    
+		    <inOut uri="cxf:bean:customerWebService" />
+		    
+		    <!-- Procesing Response -->
+   		    <bean ref="processorBean" method="manageSOAPResponse"/>
+		    <log message="Response from customerWebService:\n${body}"/>    
+		</route>
+				
+		<!-- Exposing REST Service -->
+		<route id="rs">
+			<from uri="cxfrs:bean:customerRestService" />
+			<bean ref="customerRSImpl" method="enrich"/>
+			<log message="Response generated in CXF-RS:\n${body}"/>
+			<to uri="log:output" />
+		</route>		
+		
+		<!-- Exposing WS Service -->
+		<route id="cxf">
+			<from uri="cxf:bean:customerWebService" />
+			<bean ref="customerWSImpl" method="updateAccount"/>
+			<log message="Response generated in CXF-WS:\n${body}"/>
+			<to uri="log:output" />
+		</route>
+		
+		<!-- SQL Routes -->
+		<route id="insertDB">
+			<from uri="direct:insertDB" />
+			<log message="Inserting into data into H2-DB:\n${body}"/>
+			<transform>
+				<method ref="processorBean" method="defineNamedParameters" />
+			</transform>
+			<to uri="sql:{{sql.insertNewAccount}}"/>			
+		</route>
+	</camelContext>
 </beans>

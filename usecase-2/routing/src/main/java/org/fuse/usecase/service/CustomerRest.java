@@ -1,14 +1,16 @@
 package org.fuse.usecase.service;
 
-import org.acme.Customer;
-import org.globex.Account;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
 
-import javax.ws.rs.*;
+import org.globex.Account;
 
 @Path("/customerservice/")
 public interface CustomerRest {
 
     @POST
+	//@GET
     @Path("/enrich")
     @Consumes("application/json")
     Account enrich(Account customer);
