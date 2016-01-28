@@ -169,7 +169,12 @@
 		    <inOut uri="cxf:bean:customerWebService" />
 		    
 		    <!-- Procesing Response -->
+		    <!-- 
    		    <bean ref="processorBean" method="manageSOAPResponse"/>
+		    -->
+		    <transform>
+                <simple>${in.body[0]}</simple>
+            </transform>
 		    <log message="Response from customerWebService:\n${body}"/>    
 		</route>
 				
