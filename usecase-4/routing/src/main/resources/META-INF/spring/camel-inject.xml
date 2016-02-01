@@ -2,15 +2,37 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="
-       http://www.springframework.org/schema/beans
-       http://www.springframework.org/schema/beans/spring-beans.xsd
-       http://camel.apache.org/schema/spring
-       http://camel.apache.org/schema/spring/camel-spring.xsd">
-
+       		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       		http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+    
     <camelContext trace="false" xmlns="http://camel.apache.org/schema/spring">
         <propertyPlaceholder id="properties" location="fabric8/route.properties"/>
+        
         <route id="file-queue">
+            <from uri="sql:{{sql.selectErrorFixed}}?consumer.delay=30000"/>
+            <log message="Error fixed.\n${body['ID']} ${body['MESSAGE']}"/>
+            <multicast>
+                <to uri="direct:updateDB"/>
+                <to uri="direct:sendMessage"/>
+            </multicast>
         </route>
+        
+        <route id="updateDB">
+            <from uri="direct:updateDB"/>
+            <log message="Closing error in DB ${body['ID']}"/>
+            <transform>
+                <simple>${body['ID']}</simple>
+            </transform>
+            <to uri="sql:{{sql.closeError}}"/>
+        </route>
+        
+        <route id="sendMessageToQueue">
+			<from uri="direct:sendMessage"/>    
+            <transform>
+                <simple>${body['MESSAGE']}</simple>
+            </transform>
+            <log message="New message fixed to queue {{queueInput}}.\nMessage:\n${body}"/>
+            <to uri="amq-notx:queue:{{queueInput}}" />
+		</route>
     </camelContext>
-
 </beans>

@@ -1,0 +1,23 @@
+== Use Case 4 : Authenticate and authorize the access to the A-MQ broker using a LDAP server
+
+The purpose of this use case is to secure/restrict the access to the A-MQ Broker using a LDAP Server as backend system to host the users and their roles. This use case will extend the previously created use case.
+2 users will be created (admin, jdoe) and they will be associated to different A-MQ roles (admin, write & read) in order to manage using the authorization plugin the operation they could perform on the queues; create, publish or read.
+.
+
+During this use case development, you will extend the existing LDIF created for the Apache Directory LDAP server in order to add the entries required to restrict the access to the queues usecase-input, usecase-error and usecase-output.
+The user "John Doe - jdoe" which is part of the "users" group will be associated to the roles (admin, write and read) in order top be able to perform the required operation executed by the different Apache Camel Routes.
+You will also configure accordingly the A-MQ Broker XML file in order to use the JAAS LDAP Plugin and the Cached LDAP Authorization plugin required to secure A-MQ.
+
+.Goals
+* Secure the A-MQ Broker
+* Externalize the credentials, roles and access within a LDAP server
+* Use JAAS & LDAP plugin to authenticate the users connected to the broker
+* Restrict the access and the operations to be performed on the destination (admin, write, read) using the ActiveMQ Cached LDAP authorization plugin
+* Design a unit test to validate the operations that a user could perform on a queue
+
+=== Related Links
+Related Links about the topics included in this Use Case:
+
+* link:http://activemq.apache.org/cached-ldap-authorization-module.html[Cached LDAP Authorization Module]
+
+* link:http://activemq.apache.org/security.html[AMQ Security]

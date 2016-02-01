@@ -1,16 +1,37 @@
 package org.fuse.usecase;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.Message;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.camel.Exchange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ProcessorBean {
 
-    public void debug(Exchange exchange) {
-        Object body = (Object) exchange.getIn().getBody();
+	private static final Logger LOGGER = LoggerFactory.getLogger(ProcessorBean.class);
+    
+	public Map<String, Object> defineNamedParameters(Exchange exchange) {
+        // Headers
         Map<String, Object> headers = (Map<String, Object>) exchange.getIn().getHeaders();
-        System.out.println(">> TO DEBUG >>");
-    }
+
+        // Error Code and Message
+        String errorCode = (String) headers.get("error-code");
+        String errorMsg = (String) headers.get("error-message");
+        // Message
+        String message = exchange.getIn().getBody(String.class);
+        
+        LOGGER.info("Preparing data to insert into DB. Error: {}-{}", errorCode, errorMsg);
+
+        // Preparing data to save in DB
+		Map<String, Object> map = new HashMap<String, Object>();
+		
+		map.put("ERROR_CODE", errorCode);
+		map.put("ERROR_MESSAGE", errorMsg);
+		map.put("MESSAGE", message);
+		map.put("STATUS", "ERROR");
+		
+		return map;
+	}
+
 }

@@ -146,6 +146,12 @@
             <artifactId>h2</artifactId>
             <version>1.4.190</version>
         </dependency>
+        
+        <dependency>
+	<groupId>org.apache.karaf.jaas</groupId>
+	<artifactId>org.apache.karaf.jaas.boot</artifactId>
+	<version>2.3.0</version>
+</dependency>
 
         <!-- Testing -->
         <dependency>
